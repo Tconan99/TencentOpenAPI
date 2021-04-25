@@ -37,6 +37,7 @@ typedef NS_ENUM(NSInteger,QQApiSendResultCode) {
     EQQAPIQZONENOTSUPPORTIMAGE = 10001,  //qzone分享不支持image类型分享
     EQQAPIVERSIONNEEDUPDATE = 10002,  //当前QQ版本太低，需要更新至新版本才可以支持
     ETIMAPIVERSIONNEEDUPDATE = 10004,  //当前TIM版本太低，需要更新至新版本才可以支持
+    EAPPURLTYPESILLEGALITY = 20000,  //(>=3.3.8)第三方APP的info.plist中UrlTypes字段存在QQ的UrlScheme
 };
 
 #pragma mark - QQApiObject(分享对象类型)
@@ -44,7 +45,7 @@ typedef NS_ENUM(NSInteger,QQApiSendResultCode) {
 // QQApiObject control flags
 typedef NS_ENUM(NSUInteger,kQQAPICtrlFlag) {
     kQQAPICtrlFlagQZoneShareOnStart = 0x01,
-    kQQAPICtrlFlagQZoneShareForbid = 0x02,
+    kQQAPICtrlFlagQZoneShareForbid = 0x02, //屏蔽好友选择器上的空间入口
     kQQAPICtrlFlagQQShare = 0x04,
     kQQAPICtrlFlagQQShareFavorites = 0x08, //收藏
     kQQAPICtrlFlagQQShareDataline = 0x10,  //数据线
@@ -66,6 +67,9 @@ typedef NS_ENUM(NSUInteger, MiniProgramType) {
     MiniProgramType_Preview=4,  // 预览版
 };
 
+/// 打印回调的block
+typedef void(^QQApiLogBolock)(NSString *logStr);
+
 // QQApiObject
 /** \brief 所有在QQ及插件间发送的数据对象的根类。
  */
@@ -74,6 +78,9 @@ __attribute__((visibility("default"))) @interface QQApiObject : NSObject
 @property(nonatomic, retain) NSString* description; ///<简要描述，最长512个字符
 @property(nonatomic, retain) NSString* universalLink; ///(>=3.3.7)支持第三方传入在互联开放平台注册的universallink
 @property(nonatomic, assign) uint64_t cflag;
+//353新增两个字断给游戏侧使用，对齐微信sdk
+@property(nonatomic, retain) NSString* tagName;
+@property(nonatomic, retain) NSString* messageExt;
 /*
  * 分享到QQ/TIM
  * SDK根据是否安装对应客户端进行判断，判断顺序：QQ > TIM
@@ -106,9 +113,16 @@ __attribute__((visibility("default"))) @interface QQApiMiniProgramObject : NSObj
 //唤起小程序 - QQ 8.1.8
 __attribute__((visibility("default"))) @interface QQApiLaunchMiniProgramObject : QQApiObject
 @property(nonatomic,retain) NSString* miniAppID; //必填，小程序的AppId（注：必须在QQ互联平台中，将该小程序与分享的App绑定）
-@property(nonatomic,retain) NSString* miniPath; //必填，小程序的展示路径
+@property(nonatomic,retain) NSString* miniPath; //小程序的展示路径,不填展示默认小程序首页
 @property(nonatomic,assign) MiniProgramType miniprogramType; //非必填，小程序的类型，默认正式版(3)，可选测试版(1)、开发版(0)
 @end
+
+//小程序唤起第三方 - SDK 3.3.9
+__attribute__((visibility("default"))) @interface QQApiMiniProgramLaunchObject : QQApiObject
+@property(nonatomic,copy) NSString* appParameter; //小程序带来的数据，透传
++ (instancetype)newWithAppParameter:(NSString*)parameter;
+@end
+
 // QQApiResultObject
 /** \brief 用于请求回应的数据类型。
  <h3>可能错误码及描述如下:</h3>
@@ -136,6 +150,7 @@ __attribute__((visibility("default"))) @interface QQApiResultObject : QQApiObjec
 
 -(id)initWithText:(NSString*)text; ///<初始化方法
 +(id)objectWithText:(NSString*)text;///<工厂方法，获取一个QQApiTextObject对象.
+
 @end
 
 // QQApiURLObject
@@ -171,6 +186,7 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  */
 +(id)objectWithURL:(NSURL*)url title:(NSString*)title description:(NSString*)description previewImageData:(NSData*)data targetContentType:(QQApiURLTargetType)targetContentType;
 +(id)objectWithURL:(NSURL*)url title:(NSString*)title description:(NSString*)description previewImageURL:(NSURL*)previewURL targetContentType:(QQApiURLTargetType)targetContentType;
+
 @end
 
 // QQApiExtendObject
@@ -199,6 +215,7 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  */
 - (id)initWithData:(NSData *)data previewImageData:(NSData*)previewImageData title:(NSString *)title description:(NSString *)description imageDataArray:(NSArray *)imageDataArray;
 
+
 /**
  helper方法获取一个autorelease的<code>QQApiExtendObject</code>对象
  @param data 数据内容
@@ -209,7 +226,6 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  一个自动释放的<code>QQApiExtendObject</code>实例
  */
 + (id)objectWithData:(NSData*)data previewImageData:(NSData*)previewImageData title:(NSString*)title description:(NSString*)description;
-
 /**
  helper方法获取一个autorelease的<code>QQApiExtendObject</code>对象
  @param data 数据内容
@@ -221,6 +237,7 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  一个自动释放的<code>QQApiExtendObject</code>实例
  */
 + (id)objectWithData:(NSData*)data previewImageData:(NSData*)previewImageData title:(NSString*)title description:(NSString*)description imageDataArray:(NSArray*)imageDataArray;
+
 
 @end
 
@@ -255,6 +272,10 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  */
 @interface QQApiVideoForQQAvatarObject : QQApiExtendObject
 @property(nonatomic, retain) NSString *assetURL;
+@end
+
+//QQApiAuthObject 用于拉起手Q的授权详情页
+@interface QQApiAuthObject : QQApiObject
 @end
 
 // QQApiImageArrayForFaceCollectionObject
@@ -421,7 +442,6 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  @note 如果url为空，调用<code>QQApi#sendMessage:</code>时将返回FALSE
  */
 +(id)objectWithURL:(NSURL*)url title:(NSString*)title description:(NSString*)description previewImageData:(NSData*)data;
-
 /**
  获取一个autorelease的<code>QQApiVideoObject</code>
  @param url 视频内容的目标URL
@@ -448,7 +468,6 @@ __attribute__((visibility("default"))) @interface QQApiURLObject : QQApiObject
  @note 如果url为空，调用<code>QQApi#sendMessage:</code>时将返回FALSE
  */
 +(id)objectWithURL:(NSURL*)url title:(NSString*)title description:(NSString*)description previewImageData:(NSData*)data;
-
 /**
  获取一个autorelease的<code>QQApiNewsObject</code>
  @param url 视频内容的目标URL

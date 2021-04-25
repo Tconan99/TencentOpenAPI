@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name         = "TencentOpenAPITconan99"
-  s.version      = "3.3.7"
+  s.version      = "3.5.3.62"
   s.summary      = "QQ分享SDK"
   s.homepage     = "https://github.com/Tconan99/TencentOpenAPI"
   s.author       = { "Tconan99" => "627594232@qq.com" }
@@ -34,4 +34,5 @@ Pod::Spec.new do |s|
   s.requires_arc          = true
   s.ios.deployment_target = '10.0'
   s.vendored_frameworks   = 'sdk/TencentOpenAPI.framework'
+  s.resources             = "sdk/TencentOpenApi_IOS_Bundle.bundle"
 end
