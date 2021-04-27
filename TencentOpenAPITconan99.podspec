@@ -34,5 +34,5 @@ Pod::Spec.new do |s|
   s.requires_arc          = true
   s.ios.deployment_target = '10.0'
   s.vendored_frameworks   = 'sdk/TencentOpenAPI.framework'
-  s.resources             = "sdk/TencentOpenApi_IOS_Bundle.bundle"
+  # s.resources             = "sdk/TencentOpenApi_IOS_Bundle.bundle"
 end
